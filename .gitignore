@@ -1,0 +1,5 @@
+session/
+output/
+__pycache__/
+*.pyc
+.vscode/
