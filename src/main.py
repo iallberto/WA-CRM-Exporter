@@ -14,6 +14,10 @@ def main():
 
     dados = exporter.run()
 
+    for chat in wa.iter_chat_elements():
+
+        print(chat["contato"])
+
     input("\nENTER para fechar...")
 
     wa.stop()

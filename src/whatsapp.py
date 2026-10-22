@@ -1,3 +1,4 @@
+from email.mime import message
 from pathlib import Path
 from pyexpat.errors import messages
 from pyexpat.errors import messages
@@ -44,18 +45,32 @@ class WhatsApp:
 
         print("WhatsApp carregado!")
 
-    def get_chat_names(self):
+    def get_chat_elements(self):
 
         self.page.wait_for_selector(
             '[data-testid="cell-frame-container"]',
             timeout=30000,
         )
 
-        chats = self.page.locator('[data-testid="cell-frame-container"]')
+        return self.page.locator(
+            '[data-testid="cell-frame-container"]'
+        )    
+
+    def scroll_chat_list(self):
+
+        chats = self.get_chat_elements()
+
+        ultimo = chats.nth(chats.count() - 1)
+
+        ultimo.scroll_into_view_if_needed()
+
+        self.page.wait_for_timeout(500)    
+
+    def get_chat_names(self):
+
+        chats = self.get_chat_elements()
 
         total = chats.count()
-
-        print(f"Conversas encontradas: {total}")
 
         names = []
 
@@ -75,10 +90,63 @@ class WhatsApp:
                 if name and name not in names:
                     names.append(name)
 
-            except Exception as e:
-                print(f"Erro na conversa {i}: {e}")
+            except Exception:
+                continue
 
         return names
+
+    def iter_chat_elements(self):
+
+        chats = self.get_chat_elements()
+
+        total = chats.count()
+
+        for i in range(total):
+
+            try:
+
+                chat = chats.nth(i)
+
+                title = chat.locator("span[title]").first
+
+                if title.count() == 0:
+                    continue
+
+                nome = title.get_attribute("title")
+
+                if not nome:
+                    continue
+
+                yield {
+                    "contato": nome,
+                    "elemento": chat,
+                }
+
+            except Exception:
+                continue
+
+    def get_all_chat_names(self):
+
+        conversas = set()
+
+        sem_novidades = 0
+
+        while sem_novidades < 3:
+
+            nomes = self.get_chat_names()
+
+            quantidade_anterior = len(conversas)
+
+            conversas.update(nomes)
+
+            if len(conversas) == quantidade_anterior:
+                sem_novidades += 1
+            else:
+                sem_novidades = 0
+
+            self.scroll_chat_list()
+
+        return sorted(conversas)
 
     def open_chat(self, chat_name: str) -> bool:
 
@@ -106,7 +174,7 @@ class WhatsApp:
                 return True
 
         print("Conversa não encontrada.")
-        return False
+        return False  
 
     def get_messages(self, contato: str):
 
